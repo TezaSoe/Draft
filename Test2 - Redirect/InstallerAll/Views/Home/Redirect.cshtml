@@ -1,0 +1,18 @@
+﻿
+@{
+    ViewData["Title"] = "Return";
+}
+
+@if (User.Identity.IsAuthenticated)
+{
+    var guid = Guid.NewGuid().ToString();
+    //Html.Assets().Styles.Add("/css/site.css?v=" + guid);
+    Html.Assets().Scripts.Add("/js/redirect.js?v=" + guid);
+}
+else
+{
+
+    var guid = Guid.NewGuid().ToString();
+    //Html.Assets().Styles.Add("/css/site.css?v=" + guid);
+    Html.Assets().Scripts.Add("/js/redirect.js?v=" + guid);
+}
