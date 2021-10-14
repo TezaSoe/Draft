@@ -1,18 +1,10 @@
-﻿using InstallerAll.Models;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+﻿using Azure.Storage.Blobs;
+using InstallerAll.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Diagnostics;
-using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -40,8 +32,8 @@ namespace InstallerAll.Controllers
         /// <returns></returns>
         [HttpGet]
         [Authorize]
-        //public async Task<IActionResult> IndexAsync()
-        public IActionResult Index()
+        public async Task<IActionResult> IndexAsync()
+        //public IActionResult Index()
         {
             string referer = Request.Headers["Referer"].ToString();
             var query = this.Request.QueryString;
@@ -56,6 +48,8 @@ namespace InstallerAll.Controllers
 
             var nvc = HttpUtility.ParseQueryString(query.Value);
 
+            string directoryName = "";
+            string fileName = "";
             string dnfnPath = "";
 
             // Rewrite parameters
@@ -63,34 +57,100 @@ namespace InstallerAll.Controllers
             {
                 if ("dn".Equals(key))
                 {
-                    dnfnPath += nvc[key];
+                    //dnfnPath += nvc[key];
+                    directoryName = nvc[key];
                     nvc.Remove(key);
                     continue;
                 }
                 else if ("fn".Equals(key))
                 {
-                    if (!string.IsNullOrEmpty(dnfnPath))
-                    {
-                        dnfnPath += "/";
-                    }
-                    dnfnPath += nvc[key];
+                    //if (!string.IsNullOrEmpty(dnfnPath))
+                    //{
+                    //    dnfnPath += "/";
+                    //}
+                    //dnfnPath += nvc[key];
+                    fileName = nvc[key];
                     nvc.Remove(key);
                     continue;
                 }
             }
 
+            if (!string.IsNullOrEmpty(directoryName))
+            {
+                dnfnPath += directoryName + "/";
+            }
+            dnfnPath += fileName;
+
+            string blobUrl = _configuration["AzureAd:BlobUrl"];
+
+            if (!blobUrl.EndsWith("/"))
+            {
+                blobUrl += "/";
+            }
+
             if (!string.IsNullOrEmpty(dnfnPath) && !string.IsNullOrEmpty(query.Value))
             {
-                string url = _configuration["AzureAd:BlobUrl"] + dnfnPath + "?" + nvc;
+                //string url = _configuration["AzureAd:BlobUrl"] + dnfnPath + "?" + nvc;
                 //if (referer.Contains(_configuration["AzureAd:Instance"]))
                 //{
                 //    return View("Redirect");
                 //}
-                return Redirect(url);
+                //return Redirect(url);
+
+                var container = new BlobContainerClient(_configuration["AzureAd:AzureConnectionString"], directoryName);
+                var blob = container.GetBlobClient(fileName);
+                if (await blob.ExistsAsync())
+                {
+                    var a = await blob.DownloadAsync();
+                    return File(a.Value.Content, a.Value.ContentType, fileName);
+                }
+                return BadRequest();
+
+                //string url = blobUrl + dnfnPath + "?" + nvc;
+                //if (referer.Contains(_configuration["AzureAd:Instance"]))
+                //{
+                //    return View("Redirect");
+                //}
+                //return Redirect(url);
+
+                //var wc = new WebClient();
+                ////wc.DownloadProgressChanged += (s, e) =>
+                ////{
+                ////    progressBar.Value = e.ProgressPercentage;
+                ////};
+                ////wc.DownloadFileCompleted += (s, e) =>
+                ////{
+                ////    progressBar.Visible = false;
+                ////    // any other code to process the file
+                ////};
+                //var data = wc.DownloadData(url);
+                //var content = new System.IO.MemoryStream(data);
+                //var contentType = "APPLICATION/octet-stream";
+                //return File(content, contentType, fileName);
+
+                //using (WebClient wc = new WebClient())
+                //{
+                //    wc.Headers.Add("Cookie: Authentication=user"); // add a cookie header to the request
+                //    try
+                //    {
+                //        string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                //        foreach (string key in nvc.AllKeys)
+                //            wc.QueryString.Add(key, nvc[key]);
+                //        wc.DownloadFile(blobUrl + dnfnPath, desktopPath + System.IO.Path.DirectorySeparatorChar + fileName); // could add a file extension here
+                //        // do something  with data
+                //        return Ok();
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        // check exception object for the error
+                //        var errMsg = ex.Message;
+                //        return Ok();
+                //    }
+                //}
             }
             else
             {
-                return View("Return");
+                return View();
             }
         }
 
